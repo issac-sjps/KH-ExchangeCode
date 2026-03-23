@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>高雄市政府公文交換編號查詢系統</title>
+    <style>
+        :root {
+            --primary-color: #1e40af; /* 深藍色 */
+            --secondary-color: #3b82f6; /* 亮藍色 */
+            --bg-color: #f3f4f6;
+            --text-color: #1f2937;
+            --card-bg: #ffffff;
+        }
+
+        body {
+            font-family: 'Segoe UI', 'Microsoft JhengHei', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .header {
+            background-color: var(--primary-color);
+            color: white;
+            width: 100%;
+            padding: 20px 0;
+            text-align: center;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+
+        .header h1 {
+            margin: 0;
+            font-size: 24px;
+            letter-spacing: 1px;
+        }
+
+        .container {
+            width: 90%;
+            max-width: 800px;
+            margin-top: 30px;
+        }
+
+        .search-container {
+            position: relative;
+            margin-bottom: 30px;
+        }
+
+        .search-input {
+            width: 100%;
+            padding: 16px 20px;
+            font-size: 18px;
+            border: 2px solid #d1d5db;
+            border-radius: 50px;
+            box-sizing: border-box;
+            outline: none;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+
+        .search-input:focus {
+            border-color: var(--secondary-color);
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.2);
+        }
+
+        .results-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 20px;
+            padding-bottom: 50px;
+        }
+
+        .card {
+            background-color: var(--card-bg);
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            border-top: 5px solid var(--secondary-color);
+            transition: transform 0.2s ease;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+        }
+
+        .card h3 {
+            margin: 0 0 10px 0;
+            font-size: 1.2rem;
+            color: var(--primary-color);
+        }
+
+        .card .number-badge {
+            display: inline-block;
+            background-color: #fee2e2;
+            color: #dc2626;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 1.2rem;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+
+        .card .location {
+            font-size: 0.9rem;
+            color: #6b7280;
+            display: flex;
+            align-items: center;
+        }
+
+        .card .location::before {
+            content: '📍';
+            margin-right: 5px;
+        }
+
+        .no-results {
+            grid-column: 1 / -1;
+            text-align: center;
+            padding: 40px;
+            color: #6b7280;
+            font-size: 1.1rem;
+            background: white;
+            border-radius: 12px;
+        }
+        
+        .counter {
+            margin-bottom: 15px;
+            color: #6b7280;
+            font-size: 0.95rem;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <h1>高雄市政府公文交換編號查詢</h1>
+    </div>
+
+    <div class="container">
+        <div class="search-container">
+            <input type="text" id="searchInput" class="search-input" placeholder="請輸入機關或學校名稱 (例如：教育局、左營)..." autocomplete="off">
+        </div>
+        
+        <div class="counter" id="resultCounter">請輸入關鍵字開始查詢</div>
+
+        <div class="results-grid" id="resultsGrid">
+            </div>
+    </div>
+
+    <script>
+        // 資料庫：您可以在此陣列中繼續新增或修改資料
+        const exchangeData = [
+            // 鳳山行政中心 (機關)
+            { name: "教育局", number: "1-1", location: "鳳山行政中心" },
+            { name: "市長室(鳳山)", number: "2-1", location: "鳳山行政中心" },
+            { name: "環保局", number: "1-3", location: "鳳山行政中心" },
+            { name: "鳳山區第一衛生所", number: "5-1", location: "鳳山行政中心" },
+            { name: "大寮區公所", number: "9-2", location: "鳳山行政中心" },
+            
+            // 鳳山行政中心 (學校部分)
+            { name: "永芳國小", number: "13-1", location: "鳳山行政中心(學校)" },
+            { name: "鳳西國中", number: "16-1", location: "鳳山行政中心(學校)" },
+            { name: "鳳山國中", number: "16-3", location: "鳳山行政中心(學校)" },
+            { name: "大樹國小", number: "13-2", location: "鳳山行政中心(學校)" },
+            { name: "體育處", number: "1-1 (學校表)", location: "鳳山行政中心(學校)" },
+            { name: "高雄中學", number: "1-8", location: "鳳山行政中心(學校)" },
+            { name: "左營國中", number: "3-1", location: "鳳山行政中心(學校)" },
+            
+            // 四維行政中心
+            { name: "新興區公所", number: "12", location: "四維行政中心" },
+            { name: "鼓山區公所", number: "11", location: "四維行政中心" },
+            { name: "研考會", number: "10", location: "四維行政中心" },
+            { name: "兵役局", number: "9", location: "四維行政中心" },
+            { name: "地政局", number: "8", location: "四維行政中心" },
+            { name: "衛生局", number: "5", location: "四維行政中心" },
+            { name: "勞工局", number: "4", location: "四維行政中心" },
+            { name: "市長室(四維)", number: "1", location: "四維行政中心" },
+            { name: "前金區公所", number: "12-1", location: "四維行政中心" },
+            { name: "三民區公所", number: "11-1", location: "四維行政中心" },
+            { name: "警察局", number: "5-6", location: "四維行政中心" },
+            { name: "消防局", number: "5-7", location: "四維行政中心" }
+            // 您可以在這裡依照相同的格式： { name: "名稱", number: "編號", location: "位置" } 繼續加入資料
+        ];
+
+        const searchInput = document.getElementById('searchInput');
+        const resultsGrid = document.getElementById('resultsGrid');
+        const resultCounter = document.getElementById('resultCounter');
+
+        // 渲染結果的函數
+        function renderResults(results) {
+            resultsGrid.innerHTML = ''; // 清空目前結果
+
+            if (results.length === 0) {
+                resultsGrid.innerHTML = '<div class="no-results">找不到符合的機關或學校，請嘗試其他關鍵字。</div>';
+                resultCounter.textContent = '共找到 0 筆資料';
+                return;
+            }
+
+            resultCounter.textContent = `共找到 ${results.length} 筆資料`;
+
+            results.forEach(item => {
+                const card = document.createElement('div');
+                card.className = 'card';
+                card.innerHTML = `
+                    <h3>${item.name}</h3>
+                    <div class="number-badge">${item.number}</div>
+                    <div class="location">${item.location}</div>
+                `;
+                resultsGrid.appendChild(card);
+            });
+        }
+
+        // 監聽輸入框的輸入事件 (即時搜尋)
+        searchInput.addEventListener('input', function(e) {
+            const searchTerm = e.target.value.trim().toLowerCase();
+            
+            if (searchTerm === '') {
+                // 如果輸入框為空，顯示全部或清空
+                renderResults(exchangeData);
+                return;
+            }
+
+            // 過濾資料
+            const filteredData = exchangeData.filter(item => 
+                item.name.toLowerCase().includes(searchTerm) || 
+                item.number.toLowerCase().includes(searchTerm)
+            );
+
+            renderResults(filteredData);
+        });
+
+        // 初始載入時顯示所有資料
+        renderResults(exchangeData);
+
+    </script>
+</body>
+</html>
